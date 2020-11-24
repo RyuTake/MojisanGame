@@ -7,62 +7,93 @@ public class GameDirector : MonoBehaviour
 {
     // オブジェクトさんたち
     GameObject mojisan;
-    GameObject peach;
-    GameObject peachStackText;
     GameObject beamYellow;
     GameObject countDownText;
     GameObject timerText;
+    GameObject peachButton;
+    GameObject peachButtonText;
+    GameObject enemyText;
 
     // 変数さんたち
-    float peachStack;   // 闘気スタック数
-    float rotateSpeed;  // モンク回転スピード
-    float time;         // 時間
-    bool gameStatus;   // ゲーム動作状態(on:動作、off:停止)
-    string countDownTextString; //カウントダウン用テキスト
-    float attackTime;   //攻撃したときの時間
-    string timerTextString; // タイマー表示用テキスト
+    private float peachStack;   // 闘気スタック数
+    private float rotateSpeed;  // モンク回転スピード
+    private bool gameStatus;   // ゲーム動作状態(on:動作、off:停止)
+    private string countDownTextString; //カウントダウン用テキスト
+    private float attackTime;   //攻撃したときの時間
+    private float attackCount;  // 攻撃回数
+    private float timeLimit;    //ゲーム時間
+    private float gameStartTime;    // ゲーム開始時間
+    private float usedTime;         // ゲーム経過時間
+
+
+    // public関数-------------------------------------------------------------
+    public void PeachTap()
+    {
+        // 闘気が5の時は万象闘気圏を撃ってリセット
+        if (peachStack == 5f)
+        {
+            peachStack = 0f;
+            rotateSpeed = 0f;
+            this.mojisan.transform.rotation.Set(0, 0, 0, 0);
+            this.beamYellow.SetActive(true);
+            this.attackTime = Time.time;
+            this.attackCount++;
+            this.enemyText.GetComponent<Text>().text= this.attackCount.ToString();
+        }
+        // 闘気をスタックする
+        else
+        {
+            this.peachStack++;
+        }
+
+    }
+
+    // private関数-------------------------------------------------------------
 
     // Start is called before the first frame update
     void Start()
     {
         // ゲームオブジェクト取得
         this.mojisan = GameObject.Find("mojisan");
-        this.peach = GameObject.Find("fruit_peach");
-        this.peachStackText = GameObject.Find("PeachStackText");
-        this.beamYellow = GameObject.Find("beam_yellow");
+        this.beamYellow = GameObject.Find("beamYellow");
         this.countDownText = GameObject.Find("CountDownText");
         this.timerText = GameObject.Find("TimerText");
-        
+        this.peachButton = GameObject.Find("PeachButton");
+        this.peachButtonText = GameObject.Find("PeachButtonText");
+        this.enemyText = GameObject.Find("enemyText");
+
         // 変数初期化
         this.peachStack = 0f;
         this.rotateSpeed = 0f;
         this.countDownTextString = "Click to Start";
-        this.timerTextString = Time.time.ToString();
-
+        this.attackCount = 0f;
+        this.enemyText.GetComponent<Text>().text = "0";
+        this.timeLimit = 10f;
+        this.gameStartTime = 0f;
+        this.usedTime = this.timeLimit;
 
         // 表示関係初期化
         // カウントダウン初期化
         this.countDownText.GetComponent<Text>().text = this.countDownTextString;
         // 画面上部タイマー初期化
-         this.timerText.GetComponent<Text>().text = Time.time.ToString();
+         this.timerText.GetComponent<Text>().text = this.timeLimit.ToString();
         // 闘気数字初期化
-        this.peachStackText.GetComponent<Text>().text = this.peachStack.ToString();
+        this.peachButtonText.GetComponent<Text>().text = this.peachStack.ToString();
         
         // エフェクト表示初期化
         this.beamYellow.SetActive(false);
 
-        // タイマー関連初期化
-        this.time = 0f;
+        // ゲーム状態初期化
         this.gameStatus = false;
 
 
     }
 
     // Update is called once per frame
-    void Update()
+    void FixedUpdate()
     {
         // ゲームが動いていないとき
-        if(gameStatus == false)
+        if (gameStatus == false)
         {
             // マウスクリックでゲームスタート
             if(Input.GetMouseButtonDown(0))
@@ -73,42 +104,15 @@ public class GameDirector : MonoBehaviour
         }
         else
         {
-            // todo 関数切り分ける
-            // ゲーム処理 
-            if (Input.GetMouseButtonDown(0))
-            {
-                // 闘気が5の時は万象闘気圏を撃ってリセット
-                if (peachStack == 5f)
-                {
-                    peachStack = 0f;
-                    rotateSpeed = 0f;
-                    this.mojisan.transform.rotation.Set(0, 0, 0, 0);
-                    this.beamYellow.SetActive(true);
-                    this.attackTime = Time.time;
-                }
-                // 闘気をスタックする
-                else
-                {
-                    this.peachStack++;
-                }
-            }
-            if (peachStack == 5f)
-            {
-                rotateSpeed = 10f;
-            }
-            this.peachStackText.GetComponent<Text>().text = this.peachStack.ToString();
-            this.mojisan.transform.Rotate(0, 0, rotateSpeed);
-            // 攻撃エフェクト消去判定
-            EffectOffMethod();
-            // タイマーテキスト更新
-             this.timerText.GetComponent<Text>().text = Time.time.ToString();
+            // ゲーム実行
+            RunGame();
 
         }
     }
 
     // ゲーム処理本体 ---------------------------
     // ゲーム開始処理
-    void StartGame()
+    private void StartGame()
     {
 
         // カウントダウン処理
@@ -130,10 +134,46 @@ public class GameDirector : MonoBehaviour
         this.countDownText.SetActive(false);
         // タイマーのフラグをon
         gameStatus = true;
+        // ゲーム開始時間記憶
+        this.gameStartTime = Time.time;
+    }
+
+    // ゲーム実行処理
+    private void RunGame()
+    {
+        // 残り時間計算
+        usedTime = this.timeLimit - Time.time + this.gameStartTime;
+        // 闘気5の時
+        if (peachStack == 5f)
+        {
+            // 回る
+            rotateSpeed = 100f;
+        }
+        // 闘気テキスト更新
+        this.peachButtonText.GetComponent<Text>().text = this.peachStack.ToString();
+        // モじさん回転
+        this.mojisan.transform.Rotate(0, 0, rotateSpeed);
+        // 攻撃エフェクト消去判定
+        EffectOffMethod();
+
+        // タイマーがゼロ未満の場合の処理
+        if(usedTime < 0)
+        {
+            // ボタンを無効化
+            this.peachButton.SetActive(false);
+        }
+        // タイマー時間が正の場合
+        else
+        {
+            // タイマーテキスト更新
+            this.timerText.GetComponent<Text>().text = (usedTime).ToString();
+
+        }
+
     }
 
     // 万象闘気圏非表示処理
-    void EffectOffMethod()
+    private void EffectOffMethod()
     {
         // 陰陽闘気斬
 
@@ -141,7 +181,7 @@ public class GameDirector : MonoBehaviour
         if(this.beamYellow.activeSelf)
         {
             // Time.timeで取れる時間はfloatのsec msでないので注意
-            if(Time.time - attackTime > 2)
+            if(Time.time - attackTime > 0.5)
             {
                 this.beamYellow.SetActive(false);
             }
@@ -149,23 +189,5 @@ public class GameDirector : MonoBehaviour
     }
 
 
-
-    // Timer関連--------------------------
-    // タイマー初期化
-    // Time関数で開始からの時間はずっと保持している
-    // じゃあ、Time使って何とかする？
-    // Updateのたびになんかさせる？or
-    // Time関数を適宜呼び出せば問題なし？
-    void StartTimer()
-    {
-
-    }
-
-    // タイマーさん
-    float Timer(float time)
-    {
-
-
-        return time;
-    }
+ 
 }

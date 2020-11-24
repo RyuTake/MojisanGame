@@ -7,17 +7,17 @@ public class QuitGame : MonoBehaviour
     // Start is called before the first frame update
     void Start()
     {
-        
+        Debug.Log("exit initialized");
     }
 
     // Update is called once per frame
     void Update()
     {
-        
     }
 
-    public void OnClick()
+    public void QuitGameFunction()
     {
-        Debug.Log("peach clicked");
+        Debug.Log("exit clicked");
+        UnityEngine.Application.Quit();
     }
 }
